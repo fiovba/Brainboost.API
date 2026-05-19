@@ -4,9 +4,10 @@ EXPOSE 10000
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
-COPY ["BrainBoost.API.csproj", "./"]
-RUN dotnet restore
+COPY ["BrainBoost.API/BrainBoost.API.csproj", "BrainBoost.API/"]
+RUN dotnet restore "BrainBoost.API/BrainBoost.API.csproj"
 COPY . .
+WORKDIR "/src/BrainBoost.API"
 RUN dotnet publish -c Release -o /app/publish
 
 FROM base AS final
