@@ -8,12 +8,12 @@ using System.Text;
 using BrainBoost.API.Helpers;
 using BrainBoost.API.Interfaces;
 using BrainBoost.API.Services;
-using BrainBoost.API.Interfaces;
-using BrainBoost.API.Services;
 using BrainBoost.API.Middlewares;
 using FluentValidation;
 using FluentValidation.AspNetCore;
+
 var builder = WebApplication.CreateBuilder(args);
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 builder.Services.AddControllers();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -28,18 +28,12 @@ builder.Services.AddScoped<IMediaService, MediaService>();
 builder.Services.AddScoped<IProfileService, ProfileService>();
 builder.Services.AddScoped<IBookmarkService, BookmarkService>();
 builder.Services.AddScoped<IFlashcardSetService, FlashcardSetService>();
-builder.Services.AddScoped<
-    ILeaderboardService,
-    LeaderboardService>();
+builder.Services.AddScoped<ILeaderboardService, LeaderboardService>();
 builder.Services.AddHttpContextAccessor();
-builder.Services
-    .AddFluentValidationAutoValidation();
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
 
-builder.Services
-    .AddValidatorsFromAssemblyContaining<Program>();
-builder.Services.AddScoped<
-    IDashboardService,
-    DashboardService>();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
@@ -47,7 +41,6 @@ builder.Services.AddSwaggerGen(options =>
         Title = "BrainBoost API",
         Version = "v1"
     });
-
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -57,7 +50,6 @@ builder.Services.AddSwaggerGen(options =>
         In = ParameterLocation.Header,
         Description = "JWT Token"
     });
-
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
@@ -77,31 +69,25 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     options.UseNpgsql(
-     builder.Configuration.GetConnectionString("DefaultConnection")
- );
+        builder.Configuration.GetConnectionString("DefaultConnection")
+    );
 });
-builder = WebApplication.CreateBuilder(args);
-AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true); 
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 .AddJwtBearer(options =>
 {
-    options.TokenValidationParameters =
-        new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)
-            )
-        };
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)
+        )
+    };
 });
 
 builder.Services.AddAuthorization();
@@ -119,21 +105,14 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-
-    app.UseSwagger();
-
-    app.UseSwaggerUI();
-
+app.UseSwagger();
+app.UseSwaggerUI();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-
 app.UseCors("AllowFrontend");
-
 app.UseAuthentication();
-
 app.UseAuthorization();
-
 app.MapControllers();
 
 var port = Environment.GetEnvironmentVariable("PORT") ?? "10000";
